@@ -1,32 +1,65 @@
-import { Component } from '@angular/core';
+import {Component, OnInit} from '@angular/core';
+import {Action, ActionHandler, ActionHandlers, InitialState, SideEffect, StateService} from './core/state.service';
+import {withLatestFrom} from 'rxjs/operators';
+
+export const initialState = {count: 0};
+
+export class CountActionHandler implements ActionHandler {
+    handleAction(currentState: any, action: Action): any {
+        if (action.type === 'increase') {
+            return {count: currentState.count + 1}
+        }
+        return currentState;
+    }
+}
+
+export class AppActionHandler implements ActionHandler {
+    handleAction(currentState: any, action: Action): any {
+        if (action.type === 'init') {
+            console.log('another handler');
+            return {count: currentState.count + 1}
+        }
+
+        return currentState;
+    }
+}
 
 @Component({
-  selector: 'app-root',
-  template: `
-    <!--The content below is only a placeholder and can be replaced.-->
-    <div style="text-align:center" class="content">
-      <h1>
-        Welcome to {{title}}!
-      </h1>
-      <span style="display: block">{{ title }} app is running!</span>
-      <img width="300" alt="Angular Logo" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAgMjUwIj4KICAgIDxwYXRoIGZpbGw9IiNERDAwMzEiIGQ9Ik0xMjUgMzBMMzEuOSA2My4ybDE0LjIgMTIzLjFMMTI1IDIzMGw3OC45LTQzLjcgMTQuMi0xMjMuMXoiIC8+CiAgICA8cGF0aCBmaWxsPSIjQzMwMDJGIiBkPSJNMTI1IDMwdjIyLjItLjFWMjMwbDc4LjktNDMuNyAxNC4yLTEyMy4xTDEyNSAzMHoiIC8+CiAgICA8cGF0aCAgZmlsbD0iI0ZGRkZGRiIgZD0iTTEyNSA1Mi4xTDY2LjggMTgyLjZoMjEuN2wxMS43LTI5LjJoNDkuNGwxMS43IDI5LjJIMTgzTDEyNSA1Mi4xem0xNyA4My4zaC0zNGwxNy00MC45IDE3IDQwLjl6IiAvPgogIDwvc3ZnPg==">
-    </div>
-    <h2>Here are some links to help you start: </h2>
-    <ul>
-      <li>
-        <h2><a target="_blank" rel="noopener" href="https://angular.io/tutorial">Tour of Heroes</a></h2>
-      </li>
-      <li>
-        <h2><a target="_blank" rel="noopener" href="https://angular.io/cli">CLI Documentation</a></h2>
-      </li>
-      <li>
-        <h2><a target="_blank" rel="noopener" href="https://blog.angular.io/">Angular blog</a></h2>
-      </li>
-    </ul>
-    
-  `,
-  styles: []
+    selector: 'app-root',
+    template: `
+        <h1>State App</h1>
+        <pre>{{stateService.state$ | async | json}}</pre>
+        <button (click)="add()">Add</button>
+        <app-child></app-child>
+    `,
+    providers: [
+        StateService,
+        {
+            provide: ActionHandlers,
+            useClass: CountActionHandler,
+            multi: true
+        },
+        {
+            provide: ActionHandlers,
+            useClass: AppActionHandler,
+            multi: true
+        },
+        {
+            provide: InitialState,
+            useValue: initialState
+        }]
 })
-export class AppComponent {
-  title = 'nk-state-management';
+export class AppComponent extends SideEffect implements OnInit {
+
+    constructor(public stateService: StateService) {
+        super(stateService);
+    }
+
+    ngOnInit(): void {
+        this.actions$.subscribe(() => alert('side effect'));
+    }
+
+    add() {
+        this.stateService.actions.next({type: 'increase'});
+    }
 }
